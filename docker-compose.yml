@@ -2,7 +2,7 @@ version: '3'
 services:
   homeassistant:
     container_name: homeassistant
-    image: homeassistant/raspberrypi4-homeassistant:stable
+    image: homeassistant/raspberrypi4-homeassistant:0.118.3
     volumes:
       - ./homeassistant:/config
       - ./certbot:/etc/letsencrypt
@@ -11,10 +11,12 @@ services:
     restart: always
     depends_on:
       - deconz
+#    ports:
+#      - "8123:8123"
     network_mode: host
   deconz:
     container_name: deconz
-    image: marthoc/deconz
+    image: marthoc/deconz:armhf-2.05.82
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ./deconz:/root/.local/share/dresden-elektronik/deCONZ
@@ -32,6 +34,8 @@ services:
       - DECONZ_DEVICE=/dev/ttyACM0
     restart: always
     network_mode: host
+#    ports:
+#      - "8080:80"
   duckdns:
     container_name: duckdns
     image: pandidan/duckdns
@@ -47,7 +51,7 @@ services:
       - ./certbot:/etc/letsencrypt
     restart: always
     ports:
-      - "80:80"
+      - "58123:58123"
     depends_on:
       - homeassistant
   certbot:
@@ -55,7 +59,11 @@ services:
     image: pandidan/certbot
     volumes:
       - ./certbot:/etc/letsencrypt
-    command: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    environment:
+     - DUCKDNS_TOKEN=<DUCKDNS_TOKEN>
+    # command: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    command: certbot certonly -n -q --agree-tos --email <EMAIL> --manual --manual-public-ip-logging-ok -d hejmo.duckdns.org --preferred-challenges dns --manual-auth-hook /etc/letsencrypt/duckdns.sh --manual-cleanup-hook "/etc/letsencrypt/duckdns.sh cleanup"
+    
 #  pihole:
 #    container_name: pihole
 #    image: pihole/pihole:latest
@@ -77,4 +85,3 @@ services:
 #    cap_add:
 #      - NET_ADMIN
 #    restart: unless-stopped
-
